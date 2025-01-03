@@ -22,10 +22,12 @@ Vec2 screenCenter = Vec2(SCREEN_HALF_WIDTH, SCREEN_HALF_HEIGHT);
 
 int32_t lastFrameMillis = 0;
 float fps = 0;
+volatile int32_t lastPhysicsUpdate = millis();
 Beyblade bey1;
+Beyblade bey2;
 
 void render();
-void stepPhysics(unsigned long timeStepMillis);
+void renderBey(Beyblade bey);
 
 void setup() {
   Serial.begin(115200);
@@ -38,14 +40,13 @@ void setup() {
   screen.setTextDatum(MC_DATUM);
   tft.startWrite(); // TFT chip select held low permanently
 
-  // LED 1
-  pinMode(9, OUTPUT);
-
-  adc_init();
-
   bey1.position = Vec2(12, 12);
-  bey1.velocity = Vec2(-30, 0);
-  bey1.rpm = 100;
+  bey1.velocity = Vec2(-120, 50);
+  bey1.rpm = 6000;
+
+  bey2.position = Vec2(64, 0);
+  bey2.velocity = Vec2(0, -120);
+  bey2.rpm = 4000;
 }
 
 void loop() {
@@ -56,18 +57,24 @@ void loop() {
     fps = 100000 / deltaMillis;
 
     lastFrameMillis = millis();
-    stepPhysics(deltaMillis);
-  }
+  } 
 }
 
-void stepPhysics(unsigned long timeStepMillis) {
-  bey1.position = bey1.position + bey1.velocity * (timeStepMillis / 1000.f);
+void setup1() {
+  // LED 1
+  pinMode(9, OUTPUT);
+  digitalWrite(9, HIGH);
+};
 
-  // Acceleration towards center should be proportional to distance from center
-  bey1.velocity = bey1.velocity - bey1.position / 10;
+void loop1() {
+  if (micros() - lastPhysicsUpdate > 1600) {
+    float deltaSec = (micros() - lastPhysicsUpdate) / 1000000.f;
 
-  bey1.rpm -= timeStepMillis / 50.f;
-  bey1.angle += bey1.rpm / 60.f / 1000.f * timeStepMillis * 360;
+    bey1.stepPhysics(deltaSec);
+    bey2.stepPhysics(deltaSec);
+
+    lastPhysicsUpdate = micros();
+  } 
 }
 
 ////////////////////////////////////////////////////
@@ -76,19 +83,51 @@ void stepPhysics(unsigned long timeStepMillis) {
 void render() {
   screen.fillSprite(COLOUR_BG);
 
-  Vec2 bey1ScreenPos = Vec2(bey1.position.x + screenCenter.x, bey1.position.y + screenCenter.y);
-  Vec2 bey1ScreenForwardEdge = bey1ScreenPos + Vec2::fromPolar(6, bey1.angle);
-  Vec2 bey1ScreenBackEdge = bey1ScreenPos - Vec2::fromPolar(6, bey1.angle);
-
-  screen.drawSpot(bey1ScreenPos.x, bey1ScreenPos.y, 10, COLOUR_PRIMARY, COLOUR_BG);
-  screen.drawSpot(bey1ScreenBackEdge.x, bey1ScreenBackEdge.y, 2, COLOUR_BG, COLOUR_PRIMARY);
-  screen.drawSpot(bey1ScreenForwardEdge.x, bey1ScreenForwardEdge.y, 2, COLOUR_BG, COLOUR_PRIMARY);
-  // screen.drawLine(bey1ScreenBackEdge.x, bey1ScreenBackEdge.y, bey1ScreenForwardEdge.x, bey1ScreenForwardEdge.y, COLOUR_BG);
+  renderBey(bey1);
+  renderBey(bey2);
 
   // FPS
   screen.setTextColor(COLOUR_SECONDARY);
   screen.drawNumber(fps, screenCenter.x, 12, 2);
   screen.drawString("fps", screenCenter.x, 24, 2);
 
+  screen.setTextColor(COLOUR_SECONDARY);
+  screen.drawNumber(bey1.rpm, screenCenter.x, SCREEN_HEIGHT - 24, 2);
+  screen.drawString("bey 1 rpm", screenCenter.x, SCREEN_HEIGHT - 12, 2);
+
   tft.pushImageDMA(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, screenPtr);
+}
+
+void renderBey(Beyblade bey) {
+  Vec2 beyScreenPos = Vec2(bey.position.x + screenCenter.x, bey.position.y + screenCenter.y);
+  Vec2 beyScreenForwardEdge = beyScreenPos + Vec2::fromPolar(6, bey.angle);
+  Vec2 beyScreenBackEdge = beyScreenPos - Vec2::fromPolar(6, bey.angle);
+  
+  // screen.drawSpot(beyScreenPos.x, beyScreenPos.y, 10, COLOUR_PRIMARY, COLOUR_BG);
+  // screen.drawSpot(beyScreenBackEdge.x, beyScreenBackEdge.y, 2, COLOUR_BG, COLOUR_PRIMARY);
+  // screen.drawSpot(beyScreenForwardEdge.x, beyScreenForwardEdge.y, 2, COLOUR_BG, COLOUR_PRIMARY);
+  // screen.drawLine(beyScreenBackEdge.x, beyScreenBackEdge.y, beyScreenForwardEdge.x, beyScreenForwardEdge.y, COLOUR_BG);
+
+  for (float angle = 0; angle < 360; angle += 30) {
+    float radians1 = (angle + bey.angle) * DEG_TO_RAD;
+    float radians2 = (angle + 30 + bey.angle) * DEG_TO_RAD;
+
+    Vec2 pos1 = Vec2(
+      10 * cosf(radians1),
+      10 * sinf(radians1) * cosf(bey.tilt * DEG_TO_RAD)
+    ).rotated(bey.tiltAngle) + beyScreenPos;
+
+    Vec2 pos2 = Vec2(
+      10 * cosf(radians2),
+      10 * sinf(radians2) * cosf(bey.tilt * DEG_TO_RAD)
+    ).rotated(bey.tiltAngle) + beyScreenPos;
+
+    // screen.drawPixel(pos.x, pos.y, COLOUR_PRIMARY);
+    screen.fillTriangle(
+      pos1.x, pos1.y,
+      pos2.x, pos2.y,
+      beyScreenPos.x, beyScreenPos.y,
+      0x8c71 + 0x841 * (int)(6 * cosf(bey.tiltAngle * DEG_TO_RAD) * -sinf(bey.tilt * DEG_TO_RAD))
+    );
+  }
 }

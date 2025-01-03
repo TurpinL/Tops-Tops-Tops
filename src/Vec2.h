@@ -2,8 +2,6 @@
 
 #include "utils.h"
 
-const float DEG_TO_TAU = 3.14 * 2 / 360.f;
-
 class Vec2 {
   public:
     float x;
@@ -42,11 +40,20 @@ class Vec2 {
       return *this / length();
     }
 
+    Vec2 rotated(float degrees) {
+      float radians = degrees * DEG_TO_RAD;
+
+      return Vec2(
+        x * cosf(radians) - y * sinf(radians),
+        x * sinf(radians) + y * cosf(radians)
+      );
+    }
+
     // 0º is up
     static Vec2 fromPolar(float radius, float degrees) {
-      float tau = (degrees - 90) * DEG_TO_TAU;
-      float x = radius * cosf(tau);
-      float y = radius * sinf(tau);
+      float radians = (degrees - 90) * DEG_TO_RAD;
+      float x = radius * cosf(radians);
+      float y = radius * sinf(radians);
 
       return Vec2(x, y);
     }

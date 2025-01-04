@@ -4,6 +4,8 @@
 
 class Beyblade {
 public:
+    float radius = 10;
+
     Vec2 position = Vec2(0, 0);
     Vec2 velocity = Vec2(0, 0);
     

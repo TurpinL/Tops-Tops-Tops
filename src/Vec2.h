@@ -7,6 +7,8 @@ class Vec2 {
     float x;
     float y;
 
+    Vec2() {}
+
     Vec2(float x, float y) {
       this->x = x;
       this->y = y;
@@ -28,6 +30,38 @@ class Vec2 {
       return Vec2(x * rhs, y * rhs);
     }
 
+    Vec2& operator+= (const Vec2& rhs)
+    {
+      x += rhs.x;
+      y += rhs.y;
+  
+      return *this;
+    }
+
+    Vec2& operator-= (const Vec2& rhs)
+    {
+      x -= rhs.x;
+      y -= rhs.y;
+      
+      return *this;
+    }
+
+    Vec2& operator*= (const float& rhs)
+    {
+      x *= rhs;
+      y *= rhs;
+      
+      return *this;
+    }
+
+    Vec2& operator/= (const float& rhs)
+    {
+      x /= rhs;
+      y /= rhs;
+
+      return *this;
+    }
+
     float length() {
       return sqrtf(x * x + y * y);
     }
@@ -38,6 +72,10 @@ class Vec2 {
 
     Vec2 normalized() {
       return *this / length();
+    }
+
+    float dot(const Vec2 rhs) {
+      return x * rhs.x + y * rhs.y;
     }
 
     Vec2 rotated(float degrees) {

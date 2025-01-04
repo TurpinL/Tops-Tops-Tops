@@ -30,7 +30,7 @@ float fps = 0;
 int32_t lastPhysicsUpdate = millis();
 float physicsTickRate = 0;
 
-const size_t beyCount = 5;
+const size_t beyCount = 3;
 Beyblade beys[beyCount];
 
 void render();
@@ -71,6 +71,8 @@ void setup1() {
     bey.rpm = 4000 + (rand() % 4000);
     bey.colour = rainbow(rand(), 0.4f);
   }
+
+  beys[0].rpm = -beys[0].rpm;
 };
 
 void loop1() {

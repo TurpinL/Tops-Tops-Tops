@@ -33,8 +33,22 @@ std::optional<Contact> checkCollision(Beyblade &beyA, Beyblade &beyB) {
 void resolveImpulseOfCollision(Contact &contact) {
   float linearClosingVelocity = contact.normal.dot(contact.beyA->velocity - contact.beyB->velocity);
 
-  contact.beyA->velocity -= contact.normal * linearClosingVelocity;
-  contact.beyB->velocity += contact.normal * linearClosingVelocity;
+  float beyASurfaceVelocity = abs(contact.beyA->calcCircumference() * contact.beyA->rpm * 60);
+  float beyBSurfaceVelocity = abs(contact.beyB->calcCircumference() * contact.beyB->rpm * 60);
+
+  // Lose some RPM in a collision
+  // TODO: Some calculation that takes into account the relative RPMs 
+  contact.beyA->rpm *= 0.9;
+  contact.beyB->rpm *= 0.9;
+
+  float coeffOfRestitution = 0.8f;
+
+  contact.beyA->velocity -= contact.normal * linearClosingVelocity * coeffOfRestitution;
+  // Completely made up calculation to turn lost RPM into velocity
+  contact.beyA->velocity -= contact.normal.rotated((rand() % 90) - 45) * beyASurfaceVelocity * 0.00001;
+
+  contact.beyB->velocity += contact.normal * linearClosingVelocity * coeffOfRestitution;
+  contact.beyB->velocity += contact.normal.rotated((rand() % 90) - 45) * beyBSurfaceVelocity * 0.00001;
 }
 
 // Move each body out of penetration by the shortest path possible

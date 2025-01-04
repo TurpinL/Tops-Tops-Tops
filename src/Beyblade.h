@@ -5,6 +5,7 @@
 class Beyblade {
 public:
     float radius = 10;
+    uint16_t colour = 0xFFFF;
 
     Vec2 position = Vec2(0, 0);
     Vec2 velocity = Vec2(0, 0);

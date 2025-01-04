@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <optional>
 #include "utils.h"
+#include "colourUtils.h"
 #include "Vec2.h"
 #include "Beyblade.h"
 #include "CollisionResolver.h"
@@ -29,13 +30,11 @@ float fps = 0;
 int32_t lastPhysicsUpdate = millis();
 float physicsTickRate = 0;
 
-Beyblade bey1;
-Beyblade bey2;
-
-Contact lastContact;
+const size_t beyCount = 5;
+Beyblade beys[beyCount];
 
 void render();
-void renderBey(Beyblade bey, uint16_t colour);
+void renderBey(Beyblade bey);
 void swapScreenBuffer();
 
 void setup() {
@@ -66,36 +65,33 @@ void loop() {
 }
 
 void setup1() {
-  // LED 1
-  pinMode(9, OUTPUT);
-  digitalWrite(9, HIGH);
-
-  bey1.position = Vec2(0, 50);
-  bey1.velocity = Vec2(120, 0);
-  bey1.rpm = 6000;
-
-  bey2.position = Vec2(0, -70);
-  bey2.velocity = Vec2(80, 10);
-  bey2.rpm = 4000;
+  for (Beyblade &bey : beys) {
+    bey.position = Vec2((rand() % SCREEN_WIDTH) - SCREEN_HALF_WIDTH, (rand() % SCREEN_HEIGHT) - SCREEN_HALF_HEIGHT);
+    bey.velocity = Vec2((rand() % SCREEN_WIDTH) - SCREEN_HALF_WIDTH, (rand() % SCREEN_HEIGHT) - SCREEN_HALF_HEIGHT);
+    bey.rpm = 4000 + (rand() % 4000);
+    bey.colour = rainbow(rand(), 0.4f);
+  }
 };
 
 void loop1() {
-  if (micros() - lastPhysicsUpdate > 1600) {
-    float deltaSec = (micros() - lastPhysicsUpdate) / 1000000.f;
-    physicsTickRate = 1 / deltaSec;
+  float deltaSec = (micros() - lastPhysicsUpdate) / 1000000.f;
+  lastPhysicsUpdate = micros();
 
-    bey1.stepPhysics(deltaSec);
-    bey2.stepPhysics(deltaSec);
+  physicsTickRate = 1 / deltaSec;
 
-    std::optional<Contact> contact = checkCollision(bey1, bey2);
+  for (Beyblade &bey : beys) {
+    bey.stepPhysics(deltaSec);
+  }
 
-    if (contact.has_value()) {
-      lastContact = contact.value();
-      resolveInterpenetration(contact.value());
-      resolveImpulseOfCollision(contact.value());
+  for (int i = 0; i < beyCount; i++) {
+    for (int j = i+1; j < beyCount; j++) {
+      std::optional<Contact> contact = checkCollision(beys[i], beys[j]);
+
+      if (contact.has_value()) {
+        resolveInterpenetration(contact.value());
+        resolveImpulseOfCollision(contact.value());
+      }
     }
-
-    lastPhysicsUpdate = micros();
   }
 }
 
@@ -105,18 +101,9 @@ void loop1() {
 void render() {
   curScreen->fillSprite(COLOUR_BG);
 
-  renderBey(bey1, 0xc69f);
-  renderBey(bey2, 0xfed8);
-
-  Vec2 lastContactScreenPos = lastContact.position + screenCenter;
-
-  curScreen->drawCircle(lastContactScreenPos.x, lastContactScreenPos.y, 2, 0xf800);
-  Vec2 contactNormalEnd = lastContactScreenPos + lastContact.normal * 10;
-  curScreen->drawLine(lastContactScreenPos.x, lastContactScreenPos.y, contactNormalEnd.x, contactNormalEnd.y, 0x01ff);
-
-  Vec2 contactPenetrationStart = lastContactScreenPos + lastContact.normal.normal() * (lastContact.penetration / 2);
-  Vec2 contactPenetrationEnd = lastContactScreenPos + lastContact.normal.normal() * (-lastContact.penetration / 2);
-  curScreen->drawLine(contactPenetrationStart.x, contactPenetrationStart.y, contactPenetrationEnd.x, contactPenetrationEnd.y, 0x01ff);
+  for (Beyblade &bey : beys) {
+    renderBey(bey);
+  }
 
   // FPS
   curScreen->setTextColor(COLOUR_SECONDARY);
@@ -133,14 +120,14 @@ void swapScreenBuffer() {
   curScreen = &screens[curScreenIndex];
 }
 
-void renderBey(Beyblade bey, uint16_t colour) {
+void renderBey(Beyblade bey) { 
   Vec2 beyScreenPos = bey.position + screenCenter;
   Vec2 beyScreenForwardEdge = beyScreenPos + Vec2::fromPolar(6, bey.angle);
   Vec2 beyScreenBackEdge = beyScreenPos - Vec2::fromPolar(6, bey.angle);
   
-  curScreen->drawSpot(beyScreenPos.x, beyScreenPos.y, bey.radius, colour, COLOUR_BG);
-  curScreen->drawSpot(beyScreenBackEdge.x, beyScreenBackEdge.y, 2, COLOUR_BG, colour);
-  curScreen->drawSpot(beyScreenForwardEdge.x, beyScreenForwardEdge.y, 2, COLOUR_BG, colour);
+  curScreen->drawSmoothCircle(beyScreenPos.x, beyScreenPos.y, bey.radius, bey.colour, COLOUR_BG);
+  curScreen->drawCircle(beyScreenBackEdge.x, beyScreenBackEdge.y, 2, bey.colour);
+  curScreen->drawCircle(beyScreenForwardEdge.x, beyScreenForwardEdge.y, 2, bey.colour);
   // curScreen->drawLine(beyScreenBackEdge.x, beyScreenBackEdge.y, beyScreenForwardEdge.x, beyScreenForwardEdge.y, COLOUR_BG);
 
   // for (float angle = 0; angle < 360; angle += 30) {
@@ -157,7 +144,7 @@ void renderBey(Beyblade bey, uint16_t colour) {
   //     10 * sinf(radians2) * cosf(bey.tilt * DEG_TO_RAD)
   //   ).rotated(bey.tiltAngle) + beyScreenPos;
 
-  //   // curScreen->drawPixel(pos.x, pos.y, colour);
+  //   // curScreen->drawPixel(pos.x, pos.y, bey.colour);
   //   curScreen->fillTriangle(
   //     pos1.x, pos1.y,
   //     pos2.x, pos2.y,

@@ -95,6 +95,23 @@ void loop1() {
       }
     }
   }
+
+  // Change LEDs based on Bey 0's position
+  if (beys[0].position.x > 0) {
+    analogWrite(D10, coerceInRange(beys[0].position.x * 2, 0, 255));
+    analogWrite(D11, 0);
+  } else {
+    analogWrite(D10, 0);
+    analogWrite(D11, coerceInRange(-beys[0].position.x * 2, 0, 255));
+  }
+
+  if (beys[0].position.y > 0) {
+    analogWrite(D12, coerceInRange(beys[0].position.y * 2, 0, 255));
+    analogWrite(D13, 0);
+  } else {
+    analogWrite(D12, 0);
+    analogWrite(D13, coerceInRange(-beys[0].position.y * 2, 0, 255));
+  }
 }
 
 ////////////////////////////////////////////////////
